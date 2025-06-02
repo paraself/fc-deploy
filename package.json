@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build":"npx tsc -p ."
+    "build": "npx tsc -p .",
+    "dev": "npx tsc -p . --watch"
   },
   "keywords": [],
   "author": "",
