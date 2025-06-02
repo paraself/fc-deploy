@@ -5,7 +5,7 @@ import { Code, GetFunctionRequest, CreateLayerVersionRequest } from '@alicloud/f
 import AliOSS from 'ali-oss'
 import retry from 'async-retry'
 import { IFcConfig, ILayerConfig, IOssConfig } from './types'
-import { getFcClient, getOssClient, getPackageDepsHash, isObjectExist } from './utils'
+import { getFcClient, getOssClient, getPackageDepsHash, isObjectExist, removePrecedingSlash } from './utils'
 
 
 
@@ -110,7 +110,7 @@ async function updateLayers(params: {
       compatibleRuntime: params.layerConfig.compatibleRuntime,
       code: new Code({
         ossBucketName: params.ossConfig.bucket,
-        ossObjectName: params.layerObject.objectName,
+        ossObjectName: removePrecedingSlash(params.layerObject.objectName)
       })
     })), {
     retries: 3,

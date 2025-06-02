@@ -109,3 +109,11 @@ export async function isObjectExist(params: { client: AliOSS, objectName: string
     }
   }
 }
+
+export function removePrecedingSlash(str: string) {
+  if (str.startsWith("/")) {
+    return str.substring(1)
+  } else {
+    return str
+  }
+}
