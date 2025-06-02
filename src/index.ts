@@ -55,16 +55,19 @@ export async function deploy(params: {
       fcConfig.fcFunction,
       updateFunctionReq
     )
+    const msgs = [
+      `### ${fcConfig.fcService}/${fcConfig.fcFunction} 部署成功!  `,
+      `statusCode: ${deployResult.statusCode}  `,
+      `codeSize: ${deployResult.body?.codeSize ? (deployResult.body.codeSize / 1000 + 'KB') : 'n/a'}  `,
+      `cpu: ${deployResult.body?.cpu || 'n/a'}  `,
+      `memory: ${deployResult.body?.memorySize || 'n/a'} MB  `
+    ]
     if (process.env.DEBUG_FCD) {
-      const msgs = [
-        `### ${params.name} 部署成功!  `,
-        `statusCode: ${deployResult.statusCode}  `,
-        `codeSize: ${deployResult.body?.codeSize ? (deployResult.body.codeSize / 1000 + 'KB') : 'n/a'}  `,
-        `cpu: ${deployResult.body?.cpu || 'n/a'}  `,
-        `memory: ${deployResult.body?.memorySize || 'n/a'} MB  `
-      ]
       console.log('部署结果:')
       console.log(msgs.join('\n'))
+    }
+    if (params.cbLog) {
+      params.cbLog(msgs.join('\n'))
     }
     // 更新package hash
     if (layers) {
