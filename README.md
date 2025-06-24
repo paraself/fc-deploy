@@ -2,7 +2,16 @@
 
 阿里云函数计算自动部署
 
+### 安装
+
+```bash
+npm i fc-deploy
+```
+
+### 使用
+
 ```ts
+import { deploy } from "fc-deploy";
 /** 一组函数名称 */
 const funcs = [
   "chat",
