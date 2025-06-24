@@ -134,7 +134,7 @@ async function getOrCreateLayer(params: {
       console.error(`error@layer create - retry ${i}`, e.message)
     }
   })
-  return fcLayer
+  return fcLayer?.body || undefined
 }
 
 /** 负责更新一个函数的层信息，并返回这个函数的层数组，以便用到下游的函数更新中 */
@@ -172,8 +172,8 @@ async function updateLayers(params: {
   if (!fcLayer) {
     throw new Error('无法获取或创建新的FC层，请检查配置是否正确')
   }
-  const layerName = fcLayer.body.layerName || ''
-  const layerArn = fcLayer.body.arn || ''
+  const layerName = fcLayer.layerName || ''
+  const layerArn = fcLayer.arn || ''
   if (!layerName) {
     throw new Error('无效的layerName！')
   }
