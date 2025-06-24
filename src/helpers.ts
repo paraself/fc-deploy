@@ -260,6 +260,7 @@ export async function setupLayers(params: {
       continue
     }
     if (process.env.DEBUG_FCD) {
+      console.log('-----------------------')
       console.log(`开始更新函数 ${params.fcConfigs[i].fcFunction} 的层信息...`)
     }
     const layers = await updateLayers({
