@@ -41,7 +41,7 @@ export async function deploy(params: {
       console.log(`### 开始部署函数: ${fcConfig.fcFunction} (${i + 1}/${params.fcConfigs.length})`)
     }
     // 获取当前函数的层
-    const layers = fcLayers.layers ? fcLayers.layers[i] : undefined
+    const layers = fcLayers.layers?.[i]
     if (layers) {
       updateFunctionReq.layers = layers
     }

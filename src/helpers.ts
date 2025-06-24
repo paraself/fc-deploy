@@ -1,19 +1,14 @@
 import path from 'path'
 import { zip } from 'zip-a-folder'
 import fs from 'fs'
-import { Code, GetFunctionRequest, CreateLayerVersionRequest } from '@alicloud/fc-open20210406'
+import { Code, GetFunctionRequest, CreateLayerVersionRequest, ListLayerVersionsRequest, Layer } from '@alicloud/fc-open20210406'
 import AliOSS from 'ali-oss'
 import retry from 'async-retry'
 import { IFcConfig, ILayerConfig, IOssConfig } from './types'
 import { getFcClient, getOssClient, getPackageDepsHash, isObjectExist, removePrecedingSlash } from './utils'
 
-
-
-
-
-
 /**
- * 读取现有的层文件，如果不存在则上传新的层文件。
+ * 读取现有的层文件，如果不存在则上传新的层文件。并创建新的层。
  */
 async function getOrUploadLayer(params: {
   ossClient: AliOSS
@@ -23,7 +18,7 @@ async function getOrUploadLayer(params: {
   /** 层文件名称 */
   depFileName: string,
   /** OSS文件中的对象路径 */
-  objectName: string
+  objectName: string,
 }> {
   // 压缩打包现有node_modules文件夹
   const nodeModulesPath = path.resolve(process.cwd(), 'node_modules')
@@ -46,6 +41,10 @@ async function getOrUploadLayer(params: {
     return {
       depFileName,
       objectName
+    }
+  } else {
+    if (process.env.DEBUG_FCD) {
+      console.log('依赖层文件不存在，将重新打包:', objectName)
     }
   }
   // 如果不存在，则压缩打包
@@ -78,8 +77,69 @@ async function getOrUploadLayer(params: {
   }
 }
 
+/**
+ * 获取或创建一个新的FC层。
+ */
+async function getOrCreateLayer(params: {
+  curHash: string
+  layerConfig: ILayerConfig
+  ossConfig: IOssConfig
+  fcClient: ReturnType<typeof getFcClient>
+  /** 之前创建的层的oss对象 */
+  layerObject: {
+    depFileName: string
+    objectName: string
+  }
+}): Promise<Layer | undefined> {
+  const fcClient = params.fcClient
+  if (!fcClient) {
+    throw new Error('无法获取FC客户端，请检查阿里云配置是否正确')
+  }
+  // 先拿到现有的层列表，如果没有则创建一个新的层
+  const existingLayers = await fcClient.listLayerVersions(
+    params.layerConfig.layerName,
+    new ListLayerVersionsRequest({
+      // 只获取最新的10个版本
+      maxItems: 10
+    })
+  )
+  if (process.env.DEBUG_FCD) {
+    console.log('现有层版本信息:', existingLayers.body.layers)
+  }
+  const prevLayer = existingLayers.body?.layers?.find(l => l.description?.includes(params.curHash))
+  if (prevLayer) {
+    if (process.env.DEBUG_FCD) {
+      console.log('找到现有层:', prevLayer.layerName, prevLayer.arn)
+    }
+    // 如果找到了之前的层，则直接返回
+    return prevLayer
+  }
+  // 创建新的依赖层
+  const fcLayer = await retry(() => fcClient.createLayerVersion(
+    params.layerConfig.layerName,
+    new CreateLayerVersionRequest({
+      description: [
+        params.layerConfig.layerDescription || 'fcd自定义依赖打包 ',
+        /** depFileName 是依赖的名称，其中包含hash，例如：node_modules@${curHash}.zip */
+        params.layerObject.depFileName
+      ].join('/'),
+      compatibleRuntime: params.layerConfig.compatibleRuntime,
+      code: new Code({
+        ossBucketName: params.ossConfig.bucket,
+        ossObjectName: removePrecedingSlash(params.layerObject.objectName)
+      })
+    })), {
+    retries: 3,
+    onRetry(e: Error, i: number) {
+      console.error(`error@layer create - retry ${i}`, e.message)
+    }
+  })
+  return fcLayer
+}
+
 /** 负责更新一个函数的层信息，并返回这个函数的层数组，以便用到下游的函数更新中 */
 async function updateLayers(params: {
+  curHash: string
   fcConfig: IFcConfig
   layerConfig: ILayerConfig
   ossConfig: IOssConfig
@@ -102,22 +162,16 @@ async function updateLayers(params: {
   if (process.env.DEBUG_FCD) {
     console.log('现有层信息:', layers)
   }
-  // 创建新的依赖层
-  const fcLayer = await retry(() => fcClient.createLayerVersion(
-    params.layerConfig.layerName,
-    new CreateLayerVersionRequest({
-      description: (params.layerConfig.layerDescription || 'fcd自定义依赖打包 ') + params.layerObject.depFileName,
-      compatibleRuntime: params.layerConfig.compatibleRuntime,
-      code: new Code({
-        ossBucketName: params.ossConfig.bucket,
-        ossObjectName: removePrecedingSlash(params.layerObject.objectName)
-      })
-    })), {
-    retries: 3,
-    onRetry(e: Error, i: number) {
-      console.error(`error@layer create - retry ${i}`, e.message)
-    }
+  const fcLayer = await getOrCreateLayer({
+    curHash: params.curHash,
+    layerConfig: params.layerConfig,
+    ossConfig: params.ossConfig,
+    fcClient,
+    layerObject: params.layerObject
   })
+  if (!fcLayer) {
+    throw new Error('无法获取或创建新的FC层，请检查配置是否正确')
+  }
   const layerName = fcLayer.body.layerName || ''
   const layerArn = fcLayer.body.arn || ''
   if (!layerName) {
@@ -209,6 +263,7 @@ export async function setupLayers(params: {
       console.log(`开始更新函数 ${params.fcConfigs[i].fcFunction} 的层信息...`)
     }
     const layers = await updateLayers({
+      curHash: curHash,
       fcConfig: params.fcConfigs[i],
       layerConfig: params.layerConfig,
       ossConfig: params.ossConfig,
