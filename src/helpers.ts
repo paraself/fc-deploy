@@ -104,7 +104,7 @@ async function getOrCreateLayer(params: {
     })
   )
   if (process.env.DEBUG_FCD) {
-    console.log('现有层版本信息:', existingLayers.body.layers)
+    console.log('现有层版本信息:', existingLayers.body.layers?.map(l => l.arn))
   }
   const prevLayer = existingLayers.body?.layers?.find(l => l.description?.includes(params.curHash))
   if (prevLayer) {
