@@ -181,7 +181,7 @@ async function updateLayers(params: {
     throw new Error('无效的layerArn')
   }
   if (process.env.DEBUG_FCD) {
-    console.log('层创建成功：', layerName, layerArn)
+    console.log('层获取成功：', layerName, layerArn)
     console.log('层大小：', (fcLayer.codeSize || 0) / 1024 / 1024, 'MB')
   }
   // 找到现有层里，之前的层的位置
