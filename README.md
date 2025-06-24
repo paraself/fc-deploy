@@ -68,7 +68,7 @@ deploy({
   ossConfig: {
     accessKeyId: process.env.ALIYUN_ACCESS_KEY!,
     accessKeySecret: process.env.ALIYUN_SECRET_ACCESS_KEY!,
-    bucket: "pte-assets",
+    bucket: "your_bucket",
     region: "oss-cn-beijing",
   },
   /** 日志回调 */
