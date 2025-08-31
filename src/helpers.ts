@@ -102,11 +102,18 @@ async function getOrCreateLayer(params: {
       // 只获取最新的10个版本
       maxItems: 10
     })
-  )
+  ).catch(err => {
+    // 如果层本身不存在则报错
+    if (err?.message?.includes('LayerNotFound')) {
+      return undefined
+    } else {
+      throw err
+    }
+  })
   if (process.env.DEBUG_FCD) {
-    console.log('现有层版本信息:', existingLayers.body.layers?.map(l => l.arn))
+    console.log('现有层版本信息:', existingLayers?.body.layers?.map(l => l.arn))
   }
-  const prevLayer = existingLayers.body?.layers?.find(l => l.description?.includes(params.curHash))
+  const prevLayer = existingLayers?.body?.layers?.find(l => l.description?.includes(params.curHash))
   if (prevLayer) {
     if (process.env.DEBUG_FCD) {
       console.log('找到现有层:', prevLayer.layerName, prevLayer.arn)
