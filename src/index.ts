@@ -17,6 +17,8 @@ export async function deploy(params: {
   ossConfig: IOssConfig
   /** 层的设置。 */
   layerConfig: ILayerConfig
+  /** 可选：自定义 node_modules 路径，默认使用 cwd/node_modules */
+  nodeModulesPath?: string
 }) {
   // 将源码压缩成base64
   const codeBase64 = await compressCodeToBase64({
@@ -26,7 +28,8 @@ export async function deploy(params: {
   const fcLayers = await setupLayers({
     fcConfigs: params.fcConfigs,
     ossConfig: params.ossConfig,
-    layerConfig: params.layerConfig
+    layerConfig: params.layerConfig,
+    nodeModulesPath: params.nodeModulesPath,
   })
   const updateFunctionReq = new UpdateFunctionRequest({
     code: new Code({

@@ -14,6 +14,7 @@ async function getOrUploadLayer(params: {
   ossClient: AliOSS
   layerName: string
   curHash: string
+  nodeModulesPath?: string
 }): Promise<{
   /** 层文件名称 */
   depFileName: string,
@@ -21,7 +22,9 @@ async function getOrUploadLayer(params: {
   objectName: string,
 }> {
   // 压缩打包现有node_modules文件夹
-  const nodeModulesPath = path.resolve(process.cwd(), 'node_modules')
+  const nodeModulesPath = params.nodeModulesPath
+    ? (path.isAbsolute(params.nodeModulesPath) ? params.nodeModulesPath : path.resolve(process.cwd(), params.nodeModulesPath))
+    : path.resolve(process.cwd(), 'node_modules')
   if (!fs.existsSync(nodeModulesPath)) {
     throw new Error(`node_modules目录不存在: ${nodeModulesPath}`)
   }
@@ -213,6 +216,8 @@ export async function setupLayers(params: {
   fcConfigs: IFcConfig[]
   ossConfig: IOssConfig
   layerConfig: ILayerConfig
+  /** 自定义 node_modules 路径，默认为 cwd/node_modules */
+  nodeModulesPath?: string
 }): Promise<{ hash: string, layers: Array<string[] | undefined> | undefined }> {
   // 生成当前依赖的hash
   const curHash = await getPackageDepsHash(params.layerConfig.packageJsonLists || [
@@ -250,6 +255,7 @@ export async function setupLayers(params: {
   const layerObject = await getOrUploadLayer({
     curHash,
     layerName: params.layerConfig.layerName,
+    nodeModulesPath: params.nodeModulesPath,
     ossClient: getOssClient(params.ossConfig),
   })
 

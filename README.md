@@ -25,6 +25,8 @@ const funcs = [
 deploy({
   /** 项目名称 */
   name: "wecom-chat",
+  /** 可选：自定义 node_modules 路径（默认 cwd/node_modules） */
+  nodeModulesPath: path.resolve(process.cwd(), "node_modules"),
   /** FC客户端设置 */
   fcConfigs: funcs.map((f) => ({
     accessKeyId: process.env.ALIYUN_ACCESS_KEY!,
