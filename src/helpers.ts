@@ -215,7 +215,7 @@ export async function setupLayers(params: {
   layerConfig: ILayerConfig
 }): Promise<{ hash: string, layers: Array<string[] | undefined> | undefined }> {
   // 生成当前依赖的hash
-  const curHash = getPackageDepsHash(params.layerConfig.packageJsonLists || [
+  const curHash = await getPackageDepsHash(params.layerConfig.packageJsonLists || [
     path.resolve(process.cwd(), 'package.json'),
   ])
   if (process.env.DEBUG_FCD) {
