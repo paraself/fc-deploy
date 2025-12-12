@@ -49,20 +49,25 @@ export function md5(content: string) {
 }
 
 /**
- * 传入多个package.json的地址，会将全部的dependencies键里的依赖做排序，然后做hash，以便判断项目依赖是否发生了变化
+ * 传入多个package.json的地址，将每个文件的完整内容排序后生成hash，并包含当前项目版本号，以便判断依赖文件或版本是否发生变化
  */
-export function getPackageDepsHash(paths: string[]) {
-  const _pathAll = paths
-    .map(v => v)
-    .sort()
-    .map(p => require(p) as { dependencies?: { [key: string]: string } })
-    .map(p => p.dependencies || {})
-    .map(deps => {
-      const packageNames = Object.keys(deps).sort()
-      return packageNames.map(pn => `${pn}:${deps[pn]}`).join('\n')
-    })
-    .join('\n')
-  return md5(_pathAll)
+export async function getPackageDepsHash(paths: string[]) {
+  const projectPkgPath = path.resolve(process.cwd(), 'package.json')
+  const projectPkgContent = await fs.promises.readFile(projectPkgPath, 'utf8')
+  const projectVersion = (JSON.parse(projectPkgContent).version as string | undefined) || ''
+
+  const fileContents = await Promise.all(
+    paths
+      .slice()
+      .sort()
+      .map(async p => {
+        const content = await fs.promises.readFile(p, 'utf8')
+        return content.replace(/\r\n/g, '\n') // normalize newlines for stable hashing
+      })
+  )
+
+  const combinedContent = [projectVersion, ...fileContents].join('\n')
+  return md5(combinedContent)
 }
 
 /**
