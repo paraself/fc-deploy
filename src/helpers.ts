@@ -29,7 +29,7 @@ async function getOrUploadLayer(params: {
     throw new Error(`node_modules目录不存在: ${nodeModulesPath}`)
   }
   if (process.env.DEBUG_FCD) {
-    console.log('Compressing node_modules: ', nodeModulesPath)
+    console.log('[Layer] 📦 Preparing to compress node_modules from:', nodeModulesPath)
   }
   const depFileName = `node_modules@${params.curHash}.zip`
   const objectName = `/fc-deploy/${params.layerName}/${depFileName}`
@@ -39,7 +39,7 @@ async function getOrUploadLayer(params: {
   })
   if (isLayerOssFileExist) {
     if (process.env.DEBUG_FCD) {
-      console.log('依赖层文件已存在:', objectName)
+      console.log('[Layer] ✓ Layer file already exists in OSS:', objectName)
     }
     return {
       depFileName,
@@ -47,20 +47,20 @@ async function getOrUploadLayer(params: {
     }
   } else {
     if (process.env.DEBUG_FCD) {
-      console.log('依赖层文件不存在，将重新打包:', objectName)
+      console.log('[Layer] ⚠️  Layer file not found in OSS, will create new package:', objectName)
     }
   }
   // 如果不存在，则压缩打包
   const targetPath = path.resolve(process.cwd(), depFileName)
   if (process.env.DEBUG_FCD) {
-    console.log('Target: ', targetPath)
-    console.log('开始压缩./node_modules目录...')
+    console.log('[Layer] 📦 Target zip file:', targetPath)
+    console.log('[Layer] 🔄 Compressing node_modules directory...')
   }
   await zip(nodeModulesPath, targetPath, {
     destPath: 'nodejs/node_modules',
   })
   if (process.env.DEBUG_FCD) {
-    console.log('压缩成功，即将上传到OSS')
+    console.log('[Layer] ✓ Compression complete, uploading to OSS...')
   }
   const ossRes = await params.ossClient.put(
     `/fc-deploy/${params.layerName}/${depFileName}`,
@@ -71,8 +71,8 @@ async function getOrUploadLayer(params: {
     }
   )
   if (process.env.DEBUG_FCD) {
-    console.log('上传成功:', ossRes.url)
-    console.log('即将创建新的FC层...')
+    console.log('[Layer] ✓ Upload successful:', ossRes.url)
+    console.log('[Layer] 🔄 Layer object ready for FC layer creation')
   }
   return {
     depFileName,
@@ -114,12 +114,15 @@ async function getOrCreateLayer(params: {
     }
   })
   if (process.env.DEBUG_FCD) {
-    console.log('现有层版本信息:', existingLayers?.body.layers?.map(l => l.arn))
+    console.log('[Layer] 📋 Existing layer versions:', existingLayers?.body.layers?.length || 0, 'found')
+    if (existingLayers?.body.layers?.length) {
+      existingLayers.body.layers.forEach(l => console.log('       -', l.layerName, l.version))
+    }
   }
   const prevLayer = existingLayers?.body?.layers?.find(l => l.description?.includes(params.curHash))
   if (prevLayer) {
     if (process.env.DEBUG_FCD) {
-      console.log('找到现有层:', prevLayer.layerName, prevLayer.arn)
+      console.log('[Layer] ✓ Found existing layer with matching hash:', prevLayer.layerName, `(v${prevLayer.version})`)
     }
     // 如果找到了之前的层，则直接返回
     return prevLayer
@@ -170,7 +173,7 @@ async function updateLayers(params: {
   )
   const layers = fcInfo.body.layers || []
   if (process.env.DEBUG_FCD) {
-    console.log('现有层信息:', layers)
+    console.log('[Function] 📋 Current layers:', layers.length > 0 ? layers : 'none')
   }
   const fcLayer = await getOrCreateLayer({
     curHash: params.curHash,
@@ -191,8 +194,8 @@ async function updateLayers(params: {
     throw new Error('无效的layerArn')
   }
   if (process.env.DEBUG_FCD) {
-    console.log('层获取成功：', layerName, layerArn)
-    console.log('层大小：', (fcLayer.codeSize || 0) / 1024 / 1024, 'MB')
+    console.log('[Layer] ✓ Layer ready:', layerName, `(v${fcLayer.version})`)
+    console.log('[Layer] 📊 Layer size:', ((fcLayer.codeSize || 0) / 1024 / 1024).toFixed(2), 'MB')
   }
   // 找到现有层里，之前的层的位置
   let layerIndex = layers.findIndex(a => a.includes(layerName))
@@ -224,23 +227,23 @@ export async function setupLayers(params: {
     path.resolve(process.cwd(), 'package.json'),
   ])
   if (process.env.DEBUG_FCD) {
-    console.log('本次PackageHash:', curHash)
+    console.log('[Hash] 🔐 Current package hash:', curHash)
   }
   if (!params.layerConfig.getHash || !params.layerConfig.setHash) {
     throw new Error('必须传入getHash和setHash方法')
   }
   if (process.env.DEBUG_FCD) {
-    console.log('获取上一次PackageHash...')
+    console.log('[Hash] 🔍 Fetching previous package hashes...')
   }
   const prevHashs = await Promise.all(params.fcConfigs.map(fcConfig => params.layerConfig.getHash({
     funcName: `${fcConfig.fcService}-${fcConfig.fcFunction}`
   })))
   if (process.env.DEBUG_FCD) {
-    console.log('上一次PackageHash为:', prevHashs)
+    console.log('[Hash] 📋 Previous hashes:', prevHashs.length > 0 ? prevHashs : 'none')
   }
   if (prevHashs.every(hash => hash === curHash)) {
     if (process.env.DEBUG_FCD) {
-      console.log('全部函数依赖没有变化，不需要更新层')
+      console.log('[Layer] ✓ No dependency changes detected, skipping layer update')
     }
     return {
       hash: curHash,
@@ -248,7 +251,7 @@ export async function setupLayers(params: {
     }
   } else {
     if (process.env.DEBUG_FCD) {
-      console.log('依赖发生变化，需要更新层')
+      console.log('[Layer] 🔄 Dependency changes detected, updating layer...')
     }
   }
   // 如果依赖发生变化，则创建新的层
@@ -260,21 +263,20 @@ export async function setupLayers(params: {
   })
 
   if (process.env.DEBUG_FCD) {
-    console.log('依赖层文件信息:', layerObject)
+    console.log('[Layer] 📦 Layer package info:', layerObject.depFileName)
   }
   const resLayers: Array<string[] | undefined> = []
   // 顺序更新一个函数
   for (let i = 0; i < params.fcConfigs.length; i++) {
     if (prevHashs[i] === curHash) {
       if (process.env.DEBUG_FCD) {
-        console.log(`函数 ${params.fcConfigs[i].fcFunction} hash没有变化，跳过更新`)
+        console.log(`[Function] ✓ ${params.fcConfigs[i].fcFunction} - hash unchanged, skipping update`)
       }
       resLayers.push(undefined) // 没有变化则返回空
       continue
     }
     if (process.env.DEBUG_FCD) {
-      console.log('-----------------------')
-      console.log(`开始更新函数 ${params.fcConfigs[i].fcFunction} 的层信息...`)
+      console.log(`[Function] 🔄 Updating layer for: ${params.fcConfigs[i].fcFunction}`)
     }
     const layers = await updateLayers({
       curHash: curHash,
@@ -284,7 +286,7 @@ export async function setupLayers(params: {
       layerObject
     })
     if (process.env.DEBUG_FCD) {
-      console.log(`函数 ${params.fcConfigs[i].fcFunction} 的层信息更新成功:`, layers)
+      console.log(`[Function] ✓ ${params.fcConfigs[i].fcFunction} - layer updated successfully (${layers.length} layers)`)
     }
     resLayers.push(layers)
   }

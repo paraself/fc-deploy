@@ -81,18 +81,18 @@ export async function compressCodeToBase64(params?: {
     throw new Error(`指定的dist目录不存在: ${distPath}`)
   }
   if (process.env.DEBUG_FCD) {
-    console.log('Compressing: ', distPath)
+    console.log('[Code] 📦 Compressing code from:', distPath)
   }
   const targetPath = path.resolve(process.cwd(), 'code.zip')
   if (process.env.DEBUG_FCD) {
-    console.log('Target: ', targetPath)
+    console.log('[Code] 📝 Target zip file:', targetPath)
   }
   if (process.env.DEBUG_FCD) {
-    console.log('Start compressing code files...')
+    console.log('[Code] 🔄 Compressing code files...')
   }
   await zip(distPath, targetPath)
   if (process.env.DEBUG_FCD) {
-    console.log('Compression successful!')
+    console.log('[Code] ✓ Compression complete!')
   }
   const fileContent = await fs.promises.readFile(targetPath, { encoding: 'base64' })
   return fileContent

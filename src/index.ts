@@ -41,7 +41,7 @@ export async function deploy(params: {
   for (let i = 0; i < params.fcConfigs.length; i++) {
     const fcConfig = params.fcConfigs[i]
     if (process.env.DEBUG_FCD) {
-      console.log(`### 开始部署函数: ${fcConfig.fcFunction} (${i + 1}/${params.fcConfigs.length})`)
+      console.log(`\n[Deploy] 🚀 Deploying function: ${fcConfig.fcFunction} (${i + 1}/${params.fcConfigs.length})`)
     }
     // 获取当前函数的层
     const layers = fcLayers.layers?.[i]
@@ -66,7 +66,7 @@ export async function deploy(params: {
       `memory: ${deployResult.body?.memorySize || 'n/a'} MB  `
     ]
     if (process.env.DEBUG_FCD) {
-      console.log('部署结果:')
+      console.log('[Deploy] ✓ Deployment result:')
       console.log(msgs.join('\n'))
     }
     if (params.cbLog) {
@@ -79,7 +79,7 @@ export async function deploy(params: {
         hash: fcLayers.hash
       })
       if (process.env.DEBUG_FCD) {
-        console.log(`更新函数 ${fcConfig.fcFunction} 的层hash为: ${fcLayers.hash}`)
+        console.log(`[Deploy] 💾 Saved new hash for ${fcConfig.fcFunction}: ${fcLayers.hash}`)
       }
     }
     deployResults.push(deployResult)
