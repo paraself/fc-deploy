@@ -95,4 +95,24 @@ deploy({
 - 会对 `packageJsonLists` 中的所有 `package.json` 文件完整内容做排序、合并并生成哈希，换行符会被规范化以保证跨平台一致性。
 - 同时会把当前项目根目录的 `package.json` 版本号一并纳入哈希计算；版本变化也会触发新的层构建。
 - 任何一个被监控的 `package.json` 内容或项目版本发生变化，都会视为依赖变更，从而重新创建层。
+
+### 环境变量
+
+#### DEBUG_FCD
+
+设置 `DEBUG_FCD=1` 可以开启详细的调试日志输出，用于排查部署过程中的问题。
+
+```bash
+DEBUG_FCD=1 node deploy.js
+```
+
+#### 阿里云凭证（示例代码中使用）
+
+示例代码中使用了以下环境变量来配置阿里云服务：
+
+- `ALIYUN_ACCESS_KEY` - 阿里云 AccessKey ID
+- `ALIYUN_SECRET_ACCESS_KEY` - 阿里云 AccessKey Secret
+- `FEISHU_CHAT_ID` - 飞书群聊 ID（用于日志回调通知）
+
+这些变量仅在示例代码中使用，实际使用时可根据需要自行配置。
 ```
