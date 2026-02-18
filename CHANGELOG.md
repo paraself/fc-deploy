@@ -1,4 +1,9 @@
-# [1.2.10] - 2026-02-18
+## [1.2.11] - 2026-02-18
+
+### Fixed
+- 修复 `getPackageDepsHash` 对非 JSON 文件（如 `schema.prisma`）直接 `JSON.parse` 导致报错的问题；现在对无法解析为 JSON 对象的文件，退回到原始文本内容 hash
+
+## [1.2.10] - 2026-02-18
 
 ## Fixed
 
