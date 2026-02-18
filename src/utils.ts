@@ -49,14 +49,14 @@ export function md5(content: string) {
 }
 
 /**
- * 传入多个 package.json 的地址，提取每个文件中与运行时相关的依赖字段
- * （dependencies、peerDependencies、optionalDependencies）生成 hash，
- * 用于判断实际依赖内容是否发生变化。
+ * 传入多个文件路径，对每个文件生成稳定 hash，用于判断依赖内容是否发生变化。
  *
- * 刻意排除的字段：
- *   - version：宿主项目版本号与依赖内容无关，版本号变更不应触发 layer 重建
- *   - devDependencies：开发依赖不进入生产 layer
- *   - 其他非依赖字段（name、scripts 等）
+ * - 若文件可被解析为合法 JSON 对象（如 package.json），则只提取
+ *   dependencies、peerDependencies、optionalDependencies 三个字段参与 hash，
+ *   并对 key 排序以保证顺序无关性。
+ *   刻意排除的字段：version（版本号变更不应触发 layer 重建）、
+ *   devDependencies（开发依赖不进入生产 layer）、其他非依赖字段。
+ * - 若文件不是合法 JSON（如 schema.prisma），则直接对原始文本内容取 hash。
  */
 export async function getPackageDepsHash(paths: string[]) {
   const depFields = ['dependencies', 'peerDependencies', 'optionalDependencies'] as const
@@ -67,18 +67,28 @@ export async function getPackageDepsHash(paths: string[]) {
       .sort()
       .map(async p => {
         const content = await fs.promises.readFile(p, 'utf8')
-        const pkg = JSON.parse(content) as Record<string, unknown>
-        // 只取依赖相关字段，key 排序保证 JSON 序列化结果稳定
-        const depsOnly: Record<string, unknown> = {}
-        for (const field of depFields) {
-          const val = pkg[field]
-          if (val && typeof val === 'object') {
-            depsOnly[field] = Object.fromEntries(
-              Object.entries(val as Record<string, string>).sort(([a], [b]) => a.localeCompare(b))
-            )
+
+        // 尝试按 package.json 逻辑处理；失败则退回到原始文本 hash
+        try {
+          const pkg = JSON.parse(content)
+          if (pkg && typeof pkg === 'object' && !Array.isArray(pkg)) {
+            // 只取依赖相关字段，key 排序保证 JSON 序列化结果稳定
+            const depsOnly: Record<string, unknown> = {}
+            for (const field of depFields) {
+              const val = (pkg as Record<string, unknown>)[field]
+              if (val && typeof val === 'object') {
+                depsOnly[field] = Object.fromEntries(
+                  Object.entries(val as Record<string, string>).sort(([a], [b]) => a.localeCompare(b))
+                )
+              }
+            }
+            return JSON.stringify(depsOnly)
           }
+        } catch {
+          // 非 JSON 文件，直接使用原始内容
         }
-        return JSON.stringify(depsOnly)
+
+        return content.replace(/\r\n/g, '\n')
       })
   )
 
