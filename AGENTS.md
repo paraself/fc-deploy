@@ -51,18 +51,17 @@ git commit -m "<描述本次改动的提交信息>"
 ### Step 3 -- 更新版本号（Bump）
 
 - **必须使用 `npm version` 命令**，不要手动编辑 `package.json`。
-- **不要添加 git tag**，使用 `--no-git-tag-version` 参数。
 - 如果不清楚本次属于哪种变更类型，**先询问用户**，再操作。
 
 ```bash
 # patch：修复 bug、小改动
-npm version patch --no-git-tag-version
+npm version patch
 
 # minor：新增功能、向后兼容
-npm version minor --no-git-tag-version
+npm version minor
 
 # major：破坏性变更
-npm version major --no-git-tag-version
+npm version major
 ```
 
 版本号更新后，将 `package.json` 的版本号变更提交：
@@ -93,7 +92,7 @@ npm publish
 ```
 1\. git add -A && git commit
 2\. 更新 CHANGELOG.md → git commit
-3\. npm version [patch|minor|major] --no-git-tag-version → git commit
+3\. npm version [patch|minor|major] → git commit
 4\. pnpm build
 5\. npm publish
 ```
